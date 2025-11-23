@@ -1,0 +1,85 @@
+# -*- coding: utf-8 -*-
+"""Serial receiver."""
+
+from __future__ import annotations
+
+import logging as lg
+import serial
+import serial.tools.list_ports
+import time
+
+
+class SerialReceiver:
+    """Serial receiver class."""
+
+    def __init__(self, baudrate: int = 9600, timeout: float = 1.0) -> None:
+        """Initialize the serial receiver."""
+        self.logger: lg.Logger = lg.getLogger(f"{__name__}.{self.__class__.__name__}")
+        self.logger.debug("Initializing SerialReceiver...")
+        self.baudrate: int = baudrate
+        self.timeout: float = timeout
+        self.serial_port: serial.Serial | None = None
+
+    def list_usb_ports(self) -> list[str]:
+        """List available USB serial ports."""
+        ports = serial.tools.list_ports.comports()
+        usb_ports = [port.device for port in ports if "USB" in port.description]
+        return usb_ports
+
+    def try_connect(self, port: str) -> None:
+        """Try connecting to the specified serial port."""
+        self.logger.debug(f"Connecting to port: {port}")
+        self.serial_port = serial.Serial(port, self.baudrate, timeout=self.timeout)
+
+    def connect(self) -> None:
+        """Connect to the first available USB serial port."""
+        self.logger.info("Attempting to connect to serial port...")
+        while True:
+            available_ports = self.list_usb_ports()
+            if available_ports:
+                break
+            time.sleep(1)
+
+        while not self.is_connected():
+            try:
+                self.try_connect(available_ports[0])
+            except serial.SerialException:
+                self.logger.warning(
+                    f"Failed to connect to port: {available_ports[0]}. Retrying..."
+                )
+                time.sleep(1)
+        else:
+            self.logger.info(f"Connected to serial port: {self.serial_port.port}")
+
+    def disconnect(self) -> None:
+        """Disconnect from the serial port."""
+        if self.serial_port and self.serial_port.is_open:
+            self.serial_port.close()
+            self.serial_port = None
+
+    def read_line(self) -> str | None:
+        """Read a line from the serial port."""
+        if self.serial_port and self.serial_port.is_open:
+            try:
+                line = self.serial_port.readline().decode("utf-8").strip()
+            except serial.SerialException:
+                self.disconnect()
+                return None
+            return line
+        return None
+
+    def is_connected(self) -> bool:
+        """Check if the serial port is connected."""
+        return self.serial_port is not None and self.serial_port.is_open
+
+    def run(self) -> None:
+        """Run the serial receiver."""
+        self.logger.info("Starting SerialReceiver...")
+        self.connect()
+        while True:
+            if self.is_connected():
+                line = self.read_line()
+                # TODO: parse line
+            else:
+                self.logger.warning("Serial port disconnected. Reconnecting...")
+                self.connect()
