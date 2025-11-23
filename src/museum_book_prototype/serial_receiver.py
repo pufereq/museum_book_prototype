@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import logging as lg
+from typing import Callable
 import serial
 import serial.tools.list_ports
 import time
@@ -12,10 +13,17 @@ import time
 class SerialReceiver:
     """Serial receiver class."""
 
-    def __init__(self, baudrate: int = 9600, timeout: float = 1.0) -> None:
+    def __init__(
+        self,
+        parse_callback: Callable[[str], None],
+        baudrate: int = 9600,
+        timeout: float = 1.0,
+    ) -> None:
         """Initialize the serial receiver."""
         self.logger: lg.Logger = lg.getLogger(f"{__name__}.{self.__class__.__name__}")
         self.logger.debug("Initializing SerialReceiver...")
+
+        self.parse_callback: Callable[[str], None] = parse_callback
         self.baudrate: int = baudrate
         self.timeout: float = timeout
         self.serial_port: serial.Serial | None = None
@@ -43,9 +51,9 @@ class SerialReceiver:
         while not self.is_connected():
             try:
                 self.try_connect(available_ports[0])
-            except serial.SerialException:
+            except serial.SerialException as e:
                 self.logger.warning(
-                    f"Failed to connect to port: {available_ports[0]}. Retrying..."
+                    f"Failed to connect to port: {available_ports[0]}. Retrying... Error: {e}"
                 )
                 time.sleep(1)
         else:
@@ -61,9 +69,15 @@ class SerialReceiver:
         """Read a line from the serial port."""
         if self.serial_port and self.serial_port.is_open:
             try:
-                line = self.serial_port.readline().decode("utf-8").strip()
+                line_raw = self.serial_port.readline()
+                line = line_raw.decode("utf-8").strip()
             except serial.SerialException:
                 self.disconnect()
+                return None
+            except UnicodeDecodeError as e:
+                self.logger.error(
+                    f"Invalid data received. Skipping line: {line_raw}. Error: {e}"
+                )
                 return None
             return line
         return None
@@ -80,6 +94,12 @@ class SerialReceiver:
             if self.is_connected():
                 line = self.read_line()
                 # TODO: parse line
+
+                if line:
+                    self.parse_callback(line)
+
+                # if line:
+                #     self.logger.info(f"Received line: {line}")
             else:
                 self.logger.warning("Serial port disconnected. Reconnecting...")
                 self.connect()
