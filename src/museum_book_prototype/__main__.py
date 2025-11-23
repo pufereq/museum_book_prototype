@@ -7,6 +7,7 @@ import threading
 from museum_book_prototype.serial_receiver import SerialReceiver
 from museum_book_prototype.parse import DataParser
 from museum_book_prototype.switch_states import SwitchStates
+from museum_book_prototype.app import App
 
 
 def main() -> None:
@@ -22,8 +23,11 @@ def main() -> None:
 
     lg.info("hello!")
 
+    # init App
+    app = App()
+
     # init SwitchStates
-    switch_states = SwitchStates()
+    switch_states = SwitchStates(app.handle_input)
 
     # init DataParser
     data_parser = DataParser(state_update_callback=switch_states.update_states)
@@ -34,7 +38,8 @@ def main() -> None:
         name="SerialReceiver", target=serial_receiver.run, daemon=True
     )
     receiver_thread.start()
-    receiver_thread.join()
+
+    app.run()
 
 
 if __name__ == "__main__":

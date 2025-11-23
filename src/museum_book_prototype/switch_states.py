@@ -4,15 +4,17 @@
 from __future__ import annotations
 
 import logging as lg
+from typing import Callable
 
 
 class SwitchStates:
     """Switch states class."""
 
-    def __init__(self) -> None:
+    def __init__(self, app_callback: Callable[[dict[str, bool], str], None]) -> None:
         """Initialize the switch states."""
         self.logger: lg.Logger = lg.getLogger(f"{__name__}.{self.__class__.__name__}")
         self.logger.debug("Initializing SwitchStates...")
+        self.app_callback: Callable[[dict[str, bool], str], None] = app_callback
         self.states: dict[str, bool] = {
             "page1_open": False,
             "page1_close": False,
@@ -25,6 +27,7 @@ class SwitchStates:
             "page5_open": False,
             "page5_close": False,
         }
+        self.error: str = ""
 
     def validate_states(self) -> bool:
         """Validate the current switch states.
@@ -58,4 +61,10 @@ class SwitchStates:
                 )
                 self.states[key] = new_value
 
-        _ = self.validate_states()
+        valid = self.validate_states()
+        if not valid:
+            self.error = "Invalid switch states detected."
+        else:
+            self.error = ""
+
+        self.app_callback(self.states, self.error)
