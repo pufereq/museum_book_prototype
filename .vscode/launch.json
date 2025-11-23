@@ -1,0 +1,12 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "debugpy",
+      "request": "launch",
+      "name": "Launch __main__.py",
+      "program": "${workspaceFolder}/src/museum_book_prototype/__main__.py",
+      "console": "integratedTerminal"
+    }
+  ]
+}
