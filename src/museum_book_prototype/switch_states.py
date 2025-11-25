@@ -56,15 +56,9 @@ class SwitchStates:
                 self.logger.warning(f"Unknown switch state key: {key}")
                 continue
             if old_value != new_value:
-                self.logger.info(
+                self.logger.debug(
                     f"Switch state changed: {key} from {old_value} to {new_value}"
                 )
                 self.states[key] = new_value
 
-        valid = self.validate_states()
-        if not valid:
-            self.error = "Invalid switch states detected."
-        else:
-            self.error = ""
-
-        self.app_callback(self.states, self.error)
+        self.app_callback(self.states)

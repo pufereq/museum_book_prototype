@@ -4,9 +4,10 @@
     {
       "type": "debugpy",
       "request": "launch",
-      "name": "Launch __main__.py",
-      "program": "${workspaceFolder}/src/museum_book_prototype/__main__.py",
-      "console": "integratedTerminal"
+      "name": "Launch museum_book_prototype module",
+      "module": "museum_book_prototype.__main__",
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}"
     }
   ]
 }

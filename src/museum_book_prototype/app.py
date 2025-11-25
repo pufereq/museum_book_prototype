@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import logging as lg
 import pygame as pg
+import time
 
 from moviepy import VideoFileClip
 
@@ -23,12 +24,34 @@ class App:
         self.screen: pg.Surface = pg.display.set_mode((1920, 1080))
         pg.display.set_caption("Museum Book Prototype")
 
-        self.current_page: str | None = "page1"
+        self._current_page: str | None = None
 
         self.clock: pg.time.Clock = pg.time.Clock()
         self.running: bool = True
 
+        self.floating_start_time: float | None = None
+        self.floating_pages: set[int] | None = None
+
+        self.suspected_faulty: list[int] | None = None
+        self.reported_faults: set[frozenset[int]] = set()
+
         self.prepare_videos()
+
+    @property
+    def current_page(self) -> str | None:
+        """Get the current page."""
+        return self._current_page
+
+    @current_page.setter
+    def current_page(self, value: str | None) -> None:
+        """Set the current page."""
+        if value != self._current_page:
+            self.logger.info(
+                f"Current page changed from {self._current_page} to {value}"
+            )
+            self._current_page = value
+            if value in self.video_times:
+                self.video_times[value] = 0.0
 
     def prepare_videos(self):
         """Prepare video clips."""
@@ -43,13 +66,126 @@ class App:
         }
         self.video_times = {key: 0.0 for key in self.video_clips}
 
-    def handle_input(self, inputs: dict[str, bool], error: str) -> None:
-        """Switch the current page based on inputs.
+    def _check_invalid_state(self, page_states: list[tuple[bool, bool]]) -> None:
+        """Check for any page with both OPEN and CLOSED and report it.
+
+        This marks the page as suspected_faulty, resets floating timers, sets current_page
+        to None and logs an error the first time the fault is observed.
 
         Args:
-            inputs (dict[str, bool]): Dictionary of switch states.
+            page_states: List of (open, close) tuples for pages 1..5.
         """
-        self.logger.debug(f"Handling input: {inputs}, error: {error}")
+        for i, (open_, close) in enumerate(page_states, start=1):
+            if open_ and close:
+                self.logger.warning(f"Invalid state for page {i}: both OPEN and CLOSED")
+                self.floating_start_time = None
+                self.floating_pages = None
+                self.suspected_faulty = [i]
+                self.current_page = None
+                fault_key = frozenset({i})
+                if fault_key not in self.reported_faults:
+                    self.reported_faults.add(fault_key)
+                    msg = f"Contactor fault detected on page {i}: both OPEN and CLOSED"
+                    self.logger.error(msg)
+                else:
+                    self.logger.debug(
+                        f"Fault for page {i} already reported; not logging again."
+                    )
+                return
+
+    def handle_input(self, inputs: dict[str, bool]) -> None:
+        """Update current_page based on the 5 pairs of OPEN/CLOSED switches.
+
+        If any page is floating for more than 10 seconds the condition is logged once
+        for that specific set of pages; no exceptions are raised.
+        """
+        page_states: list[tuple[bool, bool]] = [
+            (
+                bool(inputs.get(f"page{i}_open", False)),
+                bool(inputs.get(f"page{i}_close", False)),
+            )
+            for i in range(1, 6)
+        ]
+
+        self._check_invalid_state(page_states)
+
+        # If any page is floating (neither open nor close) - start/continue floating timer.
+        floating_now = {
+            i
+            for i, (open_, close) in enumerate(page_states, start=1)
+            if (not open_ and not close)
+        }
+        if floating_now:
+            now = time.time()
+            # if set of floating pages changed, restart timer with new set
+            if self.floating_start_time is None or self.floating_pages != floating_now:
+                self.floating_start_time = now
+                self.floating_pages = set(floating_now)
+                self.logger.debug(
+                    f"Floating state started for pages {sorted(self.floating_pages)} at {self.floating_start_time}"
+                )
+            else:
+                elapsed = now - self.floating_start_time
+                self.logger.debug(
+                    f"Floating state for pages {sorted(self.floating_pages)} elapsed: {elapsed:.1f}s"
+                )
+                if elapsed > 10.0:
+                    fault_key = frozenset(self.floating_pages)
+                    if fault_key not in self.reported_faults:
+                        # mark suspected faulty contactors
+                        self.suspected_faulty = sorted(self.floating_pages)
+                        msg = f"Floating state for pages {self.suspected_faulty} persisted longer than 10 seconds"
+                        self.reported_faults.add(fault_key)
+                        self.logger.error(msg)
+                    else:
+                        self.logger.debug(
+                            f"Floating fault for pages {sorted(self.floating_pages)} already reported; not logging again."
+                        )
+            # unset current page while floating
+            self.current_page = None
+            return
+        else:
+            if self.floating_pages:
+                previously_floating_key = frozenset(self.floating_pages)
+
+                if previously_floating_key in self.reported_faults:
+                    self.reported_faults.discard(previously_floating_key)
+
+            self.floating_start_time = None
+            self.floating_pages = None
+            self.suspected_faulty = None
+
+        all_open = all(open_ and not close for open_, close in page_states)
+        all_closed = all(close and not open_ for open_, close in page_states)
+
+        if all_closed:
+            self.current_page = "front_cover"
+            self.logger.debug("All pages closed -> front_cover")
+            return
+
+        if all_open:
+            self.current_page = "back_cover"
+            self.logger.debug("All pages open -> back_cover")
+            return
+
+        # If page5 is OPEN and not CLOSED, show back_cover
+        p5_open, p5_close = page_states[4]
+        if p5_open and not p5_close:
+            self.current_page = "back_cover"
+            return
+
+        open_pages = [
+            i + 1 for i, (open_, close) in enumerate(page_states) if open_ and not close
+        ]
+        if open_pages:
+            chosen = max(open_pages)
+            self.current_page = f"page{chosen}"
+            return
+
+        self.logger.debug(
+            "Unable to determine page from inputs; setting current_page = None"
+        )
+        self.current_page = None
 
     def run(self) -> None:
         self.logger.debug("Starting main application loop...")
@@ -61,23 +197,25 @@ class App:
                 if event.type == pg.QUIT:
                     self.running = False
 
-                # if event.type == pg.KEYDOWN:
-                #     if event.key == pg.K_RIGHT:
-                #         self.switch_page(1)
-                #     if event.key == pg.K_LEFT:
-                #         self.switch_page(-1)
-
             self.screen.fill((255, 255, 255))
 
             current_video = self.video_clips.get(self.current_page)
             if current_video:
                 # advance video time
                 self.video_times[self.current_page] += dt
-                t = self.video_times[self.current_page] % current_video.duration
+                t = min(
+                    self.video_times[self.current_page], current_video.duration - 0.001
+                )
+                print(t)
 
                 frame = current_video.get_frame(t)
                 frame_surface = pg.surfarray.make_surface(frame.swapaxes(0, 1))
                 self.screen.blit(frame_surface, (0, 0))
+
+            debug_surface = pg.font.SysFont("Arial", 30).render(
+                f"Current Page: {self.current_page}", True, (0, 0, 0)
+            )
+            self.screen.blit(debug_surface, (10, 10))
 
             pg.display.flip()
             self.clock.tick(24)
