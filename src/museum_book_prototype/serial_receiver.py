@@ -88,15 +88,18 @@ class SerialReceiver:
         if self.serial_port and self.serial_port.is_open:
             try:
                 line_raw = self.serial_port.readline()
-                line = line_raw.decode("utf-8").strip()
             except serial.SerialException:
                 self.disconnect()
                 return None
+
+            try:
+                line = line_raw.decode("utf-8").strip()
             except UnicodeDecodeError as e:
                 self.logger.error(
                     f"Invalid data received. Skipping line: {line_raw}. Error: {e}"
                 )
                 return None
+
             return line
         return None
 
