@@ -14,7 +14,12 @@ class DataParser:
     def __init__(
         self, state_update_callback: Callable[[dict[str, bool]], None]
     ) -> None:
-        """Initialize the data parser."""
+        """Initialize the DataParser.
+
+        Args:
+            state_update_callback (Callable[[dict[str, bool]], None]):
+                Callback function to update switch states.
+        """
         self.logger: lg.Logger = lg.getLogger(f"{__name__}.{self.__class__.__name__}")
         self.logger.debug("Initializing DataParser...")
         self.map: dict[int, str] = {
