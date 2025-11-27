@@ -216,7 +216,6 @@ class App:
                 t = min(
                     self.video_times[self.current_page], current_video.duration - 0.001
                 )
-                print(t)
 
                 frame = current_video.get_frame(t)
                 frame_surface = pg.surfarray.make_surface(frame.swapaxes(0, 1))
