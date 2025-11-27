@@ -12,3 +12,6 @@ wheels/
 # assets
 assets/*.mov
 assets/*.mp4
+
+# logs
+logs/*.log
