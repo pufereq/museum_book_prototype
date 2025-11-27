@@ -138,7 +138,7 @@ class App:
                 self.logger.debug(
                     f"Floating state for pages {sorted(self.floating_pages)} elapsed: {elapsed:.1f}s"
                 )
-                if elapsed > 10.0:
+                if elapsed > 30.0:
                     fault_key = frozenset(self.floating_pages)
                     if fault_key not in self.reported_faults:
                         # mark suspected faulty contactors
