@@ -39,12 +39,20 @@ class App:
 
     @property
     def current_page(self) -> str | None:
-        """Get the current page."""
+        """Get the current page.
+
+        Returns:
+            str | None: The current page identifier.
+        """
         return self._current_page
 
     @current_page.setter
     def current_page(self, value: str | None) -> None:
-        """Set the current page."""
+        """Set the current page.
+
+        Args:
+            value (str | None): The new current page identifier.
+        """
         if value != self._current_page:
             self.logger.info(
                 f"Current page changed from {self._current_page} to {value}"
@@ -68,12 +76,11 @@ class App:
 
     def _check_invalid_state(self, page_states: list[tuple[bool, bool]]) -> None:
         """Check for any page with both OPEN and CLOSED and report it.
-
         This marks the page as suspected_faulty, resets floating timers, sets current_page
         to None and logs an error the first time the fault is observed.
 
         Args:
-            page_states: List of (open, close) tuples for pages 1..5.
+            page_states (list[tuple[bool, bool]]): List of (OPEN, CLOSED) states for each page.
         """
         for i, (open_, close) in enumerate(page_states, start=1):
             if open_ and close:
@@ -95,9 +102,11 @@ class App:
 
     def handle_input(self, inputs: dict[str, bool]) -> None:
         """Update current_page based on the 5 pairs of OPEN/CLOSED switches.
-
         If any page is floating for more than 10 seconds the condition is logged once
         for that specific set of pages; no exceptions are raised.
+
+        Args:
+            inputs (dict[str, bool]): Dictionary of switch states.
         """
         page_states: list[tuple[bool, bool]] = [
             (
@@ -188,6 +197,7 @@ class App:
         self.current_page = None
 
     def run(self) -> None:
+        """Run the main application loop."""
         self.logger.debug("Starting main application loop...")
 
         while self.running:
