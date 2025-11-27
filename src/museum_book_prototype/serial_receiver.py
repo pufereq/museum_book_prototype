@@ -19,7 +19,13 @@ class SerialReceiver:
         baudrate: int = 9600,
         timeout: float = 1.0,
     ) -> None:
-        """Initialize the serial receiver."""
+        """Initialize the SerialReceiver.
+
+        Args:
+            parse_callback (Callable[[str], None]): Callback function to parse received lines.
+            baudrate (int): Baud rate for serial communication.
+            timeout (float): Timeout for serial communication.
+        """
         self.logger: lg.Logger = lg.getLogger(f"{__name__}.{self.__class__.__name__}")
         self.logger.debug("Initializing SerialReceiver...")
 
@@ -29,18 +35,26 @@ class SerialReceiver:
         self.serial_port: serial.Serial | None = None
 
     def list_usb_ports(self) -> list[str]:
-        """List available USB serial ports."""
+        """List available USB serial ports.
+
+        Returns:
+            list[str]: List of USB serial port device names.
+        """
         ports = serial.tools.list_ports.comports()
         usb_ports = [port.device for port in ports if "USB" in port.description]
         return usb_ports
 
     def try_connect(self, port: str) -> None:
-        """Try connecting to the specified serial port."""
+        """Try to connect to the specified serial port.
+
+        Args:
+            port (str): The serial port to connect to.
+        """
         self.logger.debug(f"Connecting to port: {port}")
         self.serial_port = serial.Serial(port, self.baudrate, timeout=self.timeout)
 
     def connect(self) -> None:
-        """Connect to the first available USB serial port."""
+        """Connect to the serial port."""
         self.logger.info("Attempting to connect to serial port...")
         while True:
             available_ports = self.list_usb_ports()
@@ -66,7 +80,11 @@ class SerialReceiver:
             self.serial_port = None
 
     def read_line(self) -> str | None:
-        """Read a line from the serial port."""
+        """Read a line from the serial port.
+
+        Returns:
+            str | None: The read line as a string, or None if not connected.
+        """
         if self.serial_port and self.serial_port.is_open:
             try:
                 line_raw = self.serial_port.readline()
