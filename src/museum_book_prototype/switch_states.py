@@ -11,7 +11,12 @@ class SwitchStates:
     """Switch states class."""
 
     def __init__(self, app_callback: Callable[[dict[str, bool], str], None]) -> None:
-        """Initialize the switch states."""
+        """Initialize the switch states.
+
+        Args:
+            app_callback (Callable[[dict[str, bool], str], None]):
+                Callback function to notify the application of state changes.
+        """
         self.logger: lg.Logger = lg.getLogger(f"{__name__}.{self.__class__.__name__}")
         self.logger.debug("Initializing SwitchStates...")
         self.app_callback: Callable[[dict[str, bool], str], None] = app_callback
