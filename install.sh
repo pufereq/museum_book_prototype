@@ -64,9 +64,14 @@ echo "Adding udev rule for USB permissions..."
 UDEV_RULES_DIR="/etc/udev/rules.d"
 UDEV_RULE_FILE="$UDEV_RULES_DIR/99-$PROJECT_NAME.rules"
 
-sudo bash -c "cat >$UDEV_RULE_FILE" <<EOL
+# do not duplicate udev rule
+if [ -f "$UDEV_RULE_FILE" ]; then
+  echo "Udev rule already exists at $UDEV_RULE_FILE, skipping."
+else
+  sudo bash -c "cat >$UDEV_RULE_FILE" <<EOL
 ACTION!="remove", SUBSYSTEMS=="usb-serial", TAG+="uaccess"
 EOL
-sudo bash -c 'udevadm control --reload-rules && udevadm trigger'
+  sudo bash -c 'udevadm control --reload-rules && udevadm trigger'
+fi
 
 echo "Done!"
