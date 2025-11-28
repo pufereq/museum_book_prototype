@@ -7,6 +7,18 @@ PROJECT_NAME="museum_book_prototype"
 USER_HOME=$(eval echo "~$USERNAME")
 DEST_DIR="$USER_HOME/.local/share/$PROJECT_NAME"
 
+# check if curl exists
+if ! command -v curl &>/dev/null; then
+  echo "curl is required but not installed. Please install curl and rerun the script."
+  exit 1
+fi
+
+# install uv if not present
+if ! command -v uv &>/dev/null; then
+  echo "Installing uv..."
+  curl -LsSf https://astral.sh/uv/install.sh | sh
+fi
+
 echo "Installing $PROJECT_NAME to $DEST_DIR"
 
 # copy project files
@@ -16,15 +28,9 @@ cp -r ./* "$DEST_DIR"
 # set ownership
 chown -R "$USERNAME:$USERNAME" "$DEST_DIR"
 
-# install uv if not present
-if ! command -v uv &>/dev/null; then
-  echo "Installing uv..."
-  curl -LsSf https://astral.sh/uv/install.sh | sh
-fi
-
 # sync depedencies
 echo "Syncing dependencies..."
-uv --project="$DEST_DIR" sync
+"$USER_HOME/.local/bin/uv" --project="$DEST_DIR" sync
 
 # create desktop/autostart entry
 
@@ -37,7 +43,7 @@ cat >"$DESKTOP_FILE" <<EOL
 [Desktop Entry]
 Type=Application
 Name=$PROJECT_NAME
-Exec=uv --project="$DEST_DIR" run "$DEST_DIR/src/$PROJECT_NAME/__main__.py"
+Exec="$USER_HOME/.local/bin/uv" --project="$DEST_DIR" run "$DEST_DIR/src/$PROJECT_NAME/__main__.py"
 Terminal=false
 EOL
 
@@ -49,7 +55,7 @@ cat >"$AUTOSTART_FILE" <<EOL
 [Desktop Entry]
 Type=Application
 Name=$PROJECT_NAME
-Exec=uv --project="$DEST_DIR" run "$DEST_DIR/src/$PROJECT_NAME/__main__.py"
+Exec="$USER_HOME/.local/bin/uv" --project="$DEST_DIR" run "$DEST_DIR/src/$PROJECT_NAME/__main__.py"
 Terminal=false
 X-GNOME-Autostart-enabled=true
 EOL
