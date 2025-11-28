@@ -24,6 +24,11 @@ class App:
         self.screen: pg.Surface = pg.display.set_mode((1920, 1080))
         pg.display.set_caption("Museum Book Prototype")
 
+        self.error_surface: pg.Surface = pg.Surface((self.screen.get_width() - 40, 200))
+        _ = self.error_surface.fill((255, 255, 255))
+        self.error_surface.set_colorkey((255, 255, 255))
+        self.error_surface.set_alpha(200)
+
         self._current_page: str | None = None
 
         self.clock: pg.time.Clock = pg.time.Clock()
@@ -34,6 +39,10 @@ class App:
 
         self.suspected_faulty: list[int] | None = None
         self.reported_faults: set[frozenset[int]] = set()
+
+        self.critical_errors: dict[str, bool] = {
+            "video_load_failure": False,
+        }
 
         self.prepare_videos()
 
@@ -64,14 +73,19 @@ class App:
     def prepare_videos(self):
         """Prepare video clips."""
         self.logger.debug("Preparing video clips...")
-        self.video_clips = {
-            "front_cover": VideoFileClip("assets/1.mov"),
-            "page1": VideoFileClip("assets/2.mov"),
-            "page2": VideoFileClip("assets/3.mov"),
-            "page3": VideoFileClip("assets/4.mov"),
-            "page4": VideoFileClip("assets/5.mov"),
-            "back_cover": VideoFileClip("assets/6.mov"),
-        }
+        try:
+            self.video_clips = {
+                "front_cover": VideoFileClip("assets/1.mov"),
+                "page1": VideoFileClip("assets/2.mov"),
+                "page2": VideoFileClip("assets/3.mov"),
+                "page3": VideoFileClip("assets/4.mov"),
+                "page4": VideoFileClip("assets/5.mov"),
+                "back_cover": VideoFileClip("assets/6.mov"),
+            }
+        except FileNotFoundError:
+            self.logger.exception("Failed to load video clips.")
+            self.critical_errors["video_load_failure"] = True
+            self.video_clips = {}
         self.video_times = {key: 0.0 for key in self.video_clips}
 
     def _check_invalid_state(self, page_states: list[tuple[bool, bool]]) -> None:
@@ -224,12 +238,27 @@ class App:
                     (0, 0),
                 )
 
-            # debug_surface = pg.font.SysFont("Arial", 30).render(
-            #     f"Current Page: {self.current_page}",
-            #     True,
-            #     (0, 0, 0),
-            # )
-            # _ = self.screen.blit(debug_surface, (10, 10))
+            error_text: str = ""
+
+            if self.critical_errors["video_load_failure"]:
+                error_text += "Failed to load video clips.\n"
+
+            if self.reported_faults:
+                error_text += f"{', '.join(str(i) for fault in self.reported_faults for i in sorted(fault))}\n"
+
+            if self.suspected_faulty:
+                error_text = "!"
+
+            # check if any errors occured
+            if error_text:
+                _ = self.error_surface.fill((255, 255, 255))
+                font = pg.font.SysFont(None, 20)
+                lines = error_text.strip().split("\n")
+                for i, line in enumerate(lines):
+                    text_surf = font.render(line, False, (255, 0, 0))
+                    self.error_surface.blit(text_surf, (0, 0 + i * 24))
+
+            _ = self.screen.blit(self.error_surface, (20, 20))
 
             pg.display.flip()
             _ = self.clock.tick(24)
