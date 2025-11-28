@@ -21,7 +21,7 @@ class App:
         self.video_times: dict[str, float] = {}
 
         _ = pg.init()
-        self.screen: pg.Surface = pg.display.set_mode((1920, 1080))
+        self.screen: pg.Surface = pg.display.set_mode((0, 0), pg.FULLSCREEN)
         pg.display.set_caption("Museum Book Prototype")
 
         self.error_surface: pg.Surface = pg.Surface((self.screen.get_width() - 40, 200))
