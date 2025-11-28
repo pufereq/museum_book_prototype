@@ -14,8 +14,12 @@ from museum_book_prototype.app import App
 
 def main() -> None:
     """Main function to start the Museum Book Prototype application."""
+    log_format: str = (
+        "%(asctime)s : %(levelname)-8s : %(threadName)s : %(filename)s:"
+        "%(lineno)d : %(name)s :: %(message)s"
+    )
     lg.basicConfig(
-        level=lg.DEBUG,
+        level=lg.INFO,
         handlers=[
             lg.StreamHandler(),
             TimedRotatingFileHandler(
@@ -26,12 +30,18 @@ def main() -> None:
                 encoding="utf-8",
             ),
         ],
-        format=(
-            "%(asctime)s : %(levelname)-8s : %(threadName)s : %(filename)s:"
-            "%(lineno)d : %(name)s :: %(message)s"
-        ),
+        format=log_format,
     )
-    # TODO: add rotating file handler
+    error_handler = TimedRotatingFileHandler(
+        filename="logs/mbp_errors.log",
+        when="midnight",
+        interval=1,
+        backupCount=30,
+        encoding="utf-8",
+    )
+    error_handler.setLevel(lg.ERROR)
+    error_handler.setFormatter(lg.Formatter(log_format))
+    lg.getLogger().addHandler(error_handler)
 
     lg.info("hello!")
 
