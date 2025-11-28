@@ -54,4 +54,12 @@ Terminal=false
 X-GNOME-Autostart-enabled=true
 EOL
 
+echo "Adding udev rule for USB permissions..."
+UDEV_RULES_DIR="/etc/udev/rules.d"
+UDEV_RULE_FILE="$UDEV_RULES_DIR/99-$PROJECT_NAME.rules"
+
+sudo bash -c "cat >$UDEV_RULE_FILE" <<EOL
+ACTION!="remove", SUBSYSTEMS=="usb-serial", TAG+="uaccess"
+EOL
+
 echo "Done!"
