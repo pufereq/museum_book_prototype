@@ -4,6 +4,8 @@
 import logging as lg
 import threading
 
+from logging.handlers import TimedRotatingFileHandler
+
 from museum_book_prototype.serial_receiver import SerialReceiver
 from museum_book_prototype.parse import DataParser
 from museum_book_prototype.switch_states import SwitchStates
@@ -14,6 +16,16 @@ def main() -> None:
     """Main function to start the Museum Book Prototype application."""
     lg.basicConfig(
         level=lg.DEBUG,
+        handlers=[
+            lg.StreamHandler(),
+            TimedRotatingFileHandler(
+                filename="logs/mbp.log",
+                when="midnight",
+                interval=1,
+                backupCount=7,
+                encoding="utf-8",
+            ),
+        ],
         format=(
             "%(asctime)s : %(levelname)-8s : %(threadName)s : %(filename)s:"
             "%(lineno)d : %(name)s :: %(message)s"
