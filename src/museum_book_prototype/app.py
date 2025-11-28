@@ -102,7 +102,7 @@ class App:
 
     def handle_input(self, inputs: dict[str, bool]) -> None:
         """Update current_page based on the 5 pairs of OPEN/CLOSED switches.
-        If any page is floating for more than 10 seconds the condition is logged once
+        If any page is floating for more than 30 seconds the condition is logged once
         for that specific set of pages; no exceptions are raised.
 
         Args:
@@ -143,7 +143,7 @@ class App:
                     if fault_key not in self.reported_faults:
                         # mark suspected faulty contactors
                         self.suspected_faulty = sorted(self.floating_pages)
-                        msg = f"Floating state for pages {self.suspected_faulty} persisted longer than 10 seconds"
+                        msg = f"Floating state for pages {self.suspected_faulty} persisted longer than 30 seconds"
                         self.reported_faults.add(fault_key)
                         self.logger.error(msg)
                     else:
