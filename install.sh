@@ -67,5 +67,6 @@ UDEV_RULE_FILE="$UDEV_RULES_DIR/99-$PROJECT_NAME.rules"
 sudo bash -c "cat >$UDEV_RULE_FILE" <<EOL
 ACTION!="remove", SUBSYSTEMS=="usb-serial", TAG+="uaccess"
 EOL
+sudo bash -c 'udevadm control --reload-rules && udevadm trigger'
 
 echo "Done!"
