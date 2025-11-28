@@ -41,6 +41,8 @@ class App:
         self.reported_faults: set[frozenset[int]] = set()
 
         self.critical_errors: dict[str, bool] = {
+            "serial_fail": False,
+            "serial_waiting": False,
             "video_load_failure": False,
         }
 
@@ -240,6 +242,13 @@ class App:
 
             error_text: str = ""
 
+            if self.critical_errors["serial_fail"]:
+                error_text += "Cannot connect to serial port.\n"
+
+            if self.critical_errors["serial_waiting"]:
+                error_text += "Waiting for serial device...\n"
+                # TODO: determine if should show blank screen here
+
             if self.critical_errors["video_load_failure"]:
                 error_text += "Failed to load video clips.\n"
 
@@ -250,8 +259,8 @@ class App:
                 error_text = "!"
 
             # check if any errors occured
+            _ = self.error_surface.fill((255, 255, 255))
             if error_text:
-                _ = self.error_surface.fill((255, 255, 255))
                 font = pg.font.SysFont(None, 20)
                 lines = error_text.strip().split("\n")
                 for i, line in enumerate(lines):
