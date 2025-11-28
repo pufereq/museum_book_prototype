@@ -75,3 +75,5 @@ EOL
 fi
 
 echo "Done! Please log out and log back in for group changes to take effect."
+echo "Tip: add video clips to the $DEST_DIR/assets/ directory to have them appear in the application."
+echo "Note: the files muse be named sequentially as 1.mov, 2.mov, ..., 6.mov"
