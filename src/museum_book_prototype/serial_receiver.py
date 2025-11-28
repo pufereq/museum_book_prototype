@@ -9,12 +9,18 @@ import serial
 import serial.tools.list_ports
 import time
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from museum_book_prototype.app import App
+
 
 class SerialReceiver:
     """Serial receiver class."""
 
     def __init__(
         self,
+        app: App,
         parse_callback: Callable[[str], None],
         baudrate: int = 9600,
         timeout: float = 1.0,
@@ -29,6 +35,7 @@ class SerialReceiver:
         self.logger: lg.Logger = lg.getLogger(f"{__name__}.{self.__class__.__name__}")
         self.logger.debug("Initializing SerialReceiver...")
 
+        self.app: App = app
         self.parse_callback: Callable[[str], None] = parse_callback
         self.baudrate: int = baudrate
         self.timeout: float = timeout
@@ -60,6 +67,7 @@ class SerialReceiver:
             available_ports = self.list_usb_ports()
             if available_ports:
                 break
+            self.app.critical_errors["serial_waiting"] = True
             time.sleep(1)
 
         while not self.is_connected():
@@ -69,8 +77,11 @@ class SerialReceiver:
                 self.logger.warning(
                     f"Failed to connect to port: {available_ports[0]}. Retrying... Error: {e}"
                 )
+                self.app.critical_errors["serial_fail"] = True
                 time.sleep(1)
         else:
+            self.app.critical_errors["serial_fail"] = False
+            self.app.critical_errors["serial_waiting"] = False
             self.logger.info(f"Connected to serial port: {self.serial_port.port}")
 
     def disconnect(self) -> None:
