@@ -58,7 +58,7 @@ def main() -> None:
 
     # init SerialReceiver
     serial_receiver: SerialReceiver = SerialReceiver(
-        parse_callback=data_parser.input_line
+        app=app, parse_callback=data_parser.input_line
     )
     receiver_thread: threading.Thread = threading.Thread(
         name="SerialReceiver", target=serial_receiver.run, daemon=True
