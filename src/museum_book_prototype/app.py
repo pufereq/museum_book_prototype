@@ -207,7 +207,7 @@ class App:
                 if event.type == pg.QUIT:
                     self.running = False
 
-            self.screen.fill((255, 255, 255))
+            _ = self.screen.fill((255, 255, 255))
 
             current_video = self.video_clips.get(self.current_page)
             if current_video:
@@ -219,15 +219,20 @@ class App:
 
                 frame = current_video.get_frame(t)
                 frame_surface = pg.surfarray.make_surface(frame.swapaxes(0, 1))
-                self.screen.blit(frame_surface, (0, 0))
+                _ = self.screen.blit(
+                    pg.transform.smoothscale(frame_surface, self.screen.get_size()),
+                    (0, 0),
+                )
 
-            debug_surface = pg.font.SysFont("Arial", 30).render(
-                f"Current Page: {self.current_page}", True, (0, 0, 0)
-            )
-            self.screen.blit(debug_surface, (10, 10))
+            # debug_surface = pg.font.SysFont("Arial", 30).render(
+            #     f"Current Page: {self.current_page}",
+            #     True,
+            #     (0, 0, 0),
+            # )
+            # _ = self.screen.blit(debug_surface, (10, 10))
 
             pg.display.flip()
-            self.clock.tick(24)
+            _ = self.clock.tick(24)
 
         self.logger.debug("Exiting...")
         pg.quit()
