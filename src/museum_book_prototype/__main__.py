@@ -36,17 +36,21 @@ def main() -> None:
     lg.info("hello!")
 
     # init App
-    app = App()
+    app: App = App()
 
     # init SwitchStates
-    switch_states = SwitchStates(app.handle_input)
+    switch_states: SwitchStates = SwitchStates(app.handle_input)
 
     # init DataParser
-    data_parser = DataParser(state_update_callback=switch_states.update_states)
+    data_parser: DataParser = DataParser(
+        state_update_callback=switch_states.update_states
+    )
 
     # init SerialReceiver
-    serial_receiver = SerialReceiver(parse_callback=data_parser.input_line)
-    receiver_thread = threading.Thread(
+    serial_receiver: SerialReceiver = SerialReceiver(
+        parse_callback=data_parser.input_line
+    )
+    receiver_thread: threading.Thread = threading.Thread(
         name="SerialReceiver", target=serial_receiver.run, daemon=True
     )
     receiver_thread.start()
