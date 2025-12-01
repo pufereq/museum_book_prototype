@@ -43,7 +43,7 @@ cat >"$DESKTOP_FILE" <<EOL
 [Desktop Entry]
 Type=Application
 Name=$PROJECT_NAME
-Exec=bash -c 'cd $DEST_DIR && "$USER_HOME/.local/bin/uv" --project="$DEST_DIR" run "$DEST_DIR/src/$PROJECT_NAME/__main__.py"'
+Exec=bash -c 'while :; do { cd $DEST_DIR && "$USER_HOME/.local/bin/uv" --project="$DEST_DIR" run "$DEST_DIR/src/$PROJECT_NAME/__main__.py"; }; sleep 1; done'
 Terminal=false
 EOL
 
@@ -55,7 +55,7 @@ cat >"$AUTOSTART_FILE" <<EOL
 [Desktop Entry]
 Type=Application
 Name=$PROJECT_NAME
-Exec=bash -c 'cd $DEST_DIR && "$USER_HOME/.local/bin/uv" --project="$DEST_DIR" run "$DEST_DIR/src/$PROJECT_NAME/__main__.py"'
+Exec=bash -c 'while :; do { cd $DEST_DIR && "$USER_HOME/.local/bin/uv" --project="$DEST_DIR" run "$DEST_DIR/src/$PROJECT_NAME/__main__.py"; }; sleep 1; done'
 Terminal=false
 X-GNOME-Autostart-enabled=true
 EOL
