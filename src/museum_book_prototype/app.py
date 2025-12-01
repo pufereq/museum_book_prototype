@@ -277,8 +277,8 @@ class App:
             if self.critical_errors["video_load_failure"]:
                 error_text += "Failed to load video clips.\n"
 
-            if self.reported_faults:
-                error_text += f"{', '.join(str(i) for fault in self.reported_faults for i in sorted(fault))}\n"
+            # if self.reported_faults:
+            #     error_text += f"{', '.join(str(i) for fault in self.reported_faults for i in sorted(fault))}\n"
 
             if self.suspected_faulty:
                 error_text = "!"
