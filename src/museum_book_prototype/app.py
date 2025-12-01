@@ -68,8 +68,17 @@ class App:
             value (str | None): The new current page identifier.
         """
         if value != self._current_page:
+            map = {
+                "front_cover": "page1",
+                "page1": "page2",
+                "page2": "page3",
+                "page3": "page4",
+                "page4": "page5",
+                "back_cover": "page6",
+                None: "None",
+            }
             self.logger.info(
-                f"Current page changed from {self._current_page} to {value}"
+                f"Current page changed from {map.get(self._current_page, self._current_page)} to {map.get(value, value)}"
             )
             self._current_page = value
             if value in self.video_times:
@@ -95,12 +104,12 @@ class App:
         self.logger.debug("Preparing video clips...")
         try:
             self.video_clips = {
-                "page1": VideoFileClip("assets/1.mov"),
-                "page2": VideoFileClip("assets/2.mov"),
-                "page3": VideoFileClip("assets/3.mov"),
-                "page4": VideoFileClip("assets/4.mov"),
-                "page5": VideoFileClip("assets/5.mov"),
-                "page6": VideoFileClip("assets/6.mov"),
+                "front_cover": VideoFileClip("assets/1.mov"),
+                "page1": VideoFileClip("assets/2.mov"),
+                "page2": VideoFileClip("assets/3.mov"),
+                "page3": VideoFileClip("assets/4.mov"),
+                "page4": VideoFileClip("assets/5.mov"),
+                "back_cover": VideoFileClip("assets/6.mov"),
             }
         except FileNotFoundError:
             self.logger.exception("Failed to load video clips.")
@@ -209,19 +218,19 @@ class App:
         all_closed = all(close and not open_ for open_, close in page_states)
 
         if all_closed:
-            self.current_page = "page1"
+            self.current_page = "front_cover"
             self.logger.debug("All pages closed -> page1")
             return
 
         if all_open:
-            self.current_page = "page6"
+            self.current_page = "back_cover"
             self.logger.debug("All pages open -> page6")
             return
 
         # If page5 is OPEN and not CLOSED, show page6
         p5_open, p5_close = page_states[4]
         if p5_open and not p5_close:
-            self.current_page = "page6"
+            self.current_page = "back_cover"
             return
 
         open_pages = [
