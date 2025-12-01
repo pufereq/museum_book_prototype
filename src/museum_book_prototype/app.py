@@ -284,9 +284,7 @@ class App:
                 error_text = "!"
 
             # check if any errors occured
-            _ = self.error_surface.fill(
-                self.config.get("background_color", (255, 255, 255))
-            )
+            _ = self.error_surface.fill((255, 255, 255))
             if error_text:
                 font = pg.font.SysFont(None, 20)
                 lines = error_text.strip().split("\n")
