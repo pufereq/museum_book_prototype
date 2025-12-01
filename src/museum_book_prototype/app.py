@@ -134,7 +134,7 @@ class App:
 
         self._check_invalid_state(page_states)
 
-        # If any page is floating (neither open nor close) - start/continue floating timer.
+        # if any page is floating (neither open nor close) - start/continue floating timer.
         floating_now = {
             i
             for i, (open_, close) in enumerate(page_states, start=1)
@@ -265,7 +265,7 @@ class App:
                 lines = error_text.strip().split("\n")
                 for i, line in enumerate(lines):
                     text_surf = font.render(line, False, (255, 0, 0))
-                    self.error_surface.blit(text_surf, (0, 0 + i * 24))
+                    _ = self.error_surface.blit(text_surf, (0, 0 + i * 24))
 
             _ = self.screen.blit(self.error_surface, (20, 20))
 
