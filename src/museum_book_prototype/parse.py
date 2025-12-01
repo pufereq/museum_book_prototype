@@ -61,9 +61,9 @@ class DataParser:
         parsed_data: dict[str, bool] = {}
         try:
             states = line.strip().split(",")
-            if len(states) != len(self.map):
+            if len(states) != 10:
                 self.logger.warning(
-                    f"Unexpected number of states: {len(states)}. Expected: {len(self.map)}"
+                    f"Unexpected number of states: {len(states)}. Expected: 10"
                 )
             for index, state in enumerate(states):
                 key = self.map.get(index, f"unknown_{index}")

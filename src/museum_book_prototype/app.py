@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import logging as lg
 import pygame as pg
+import yaml
 import time
 
 from moviepy import VideoFileClip
@@ -19,6 +20,8 @@ class App:
         self.logger.debug("Initializing App...")
         self.video_clips: dict[str, VideoFileClip] = {}
         self.video_times: dict[str, float] = {}
+
+        self.config = self.get_config()
 
         _ = pg.init()
         self.screen: pg.Surface = pg.display.set_mode((0, 0), pg.FULLSCREEN)
@@ -72,17 +75,32 @@ class App:
             if value in self.video_times:
                 self.video_times[value] = 0.0
 
+    def get_config(self) -> dict:
+        """Load configuration from YAML file.
+
+        Returns:
+            dict: Configuration dictionary.
+        """
+        self.logger.debug("Loading configuration...")
+        try:
+            with open("config.yaml", "r", encoding="utf-8") as f:
+                config = yaml.safe_load(f)
+            return config
+        except FileNotFoundError:
+            self.logger.exception("Configuration file not found.")
+            return {}
+
     def prepare_videos(self):
         """Prepare video clips."""
         self.logger.debug("Preparing video clips...")
         try:
             self.video_clips = {
-                "front_cover": VideoFileClip("assets/1.mov"),
-                "page1": VideoFileClip("assets/2.mov"),
-                "page2": VideoFileClip("assets/3.mov"),
-                "page3": VideoFileClip("assets/4.mov"),
-                "page4": VideoFileClip("assets/5.mov"),
-                "back_cover": VideoFileClip("assets/6.mov"),
+                "page1": VideoFileClip("assets/1.mov"),
+                "page2": VideoFileClip("assets/2.mov"),
+                "page3": VideoFileClip("assets/3.mov"),
+                "page4": VideoFileClip("assets/4.mov"),
+                "page5": VideoFileClip("assets/5.mov"),
+                "page6": VideoFileClip("assets/6.mov"),
             }
         except FileNotFoundError:
             self.logger.exception("Failed to load video clips.")
@@ -115,6 +133,13 @@ class App:
                         f"Fault for page {i} already reported; not logging again."
                     )
                 return
+            else:
+                fault_key = frozenset({i})
+                if fault_key in self.reported_faults:
+                    self.reported_faults.discard(fault_key)
+                    self.logger.debug(
+                        f"Contactor fault on page {i} cleared; removing from reported faults."
+                    )
 
     def handle_input(self, inputs: dict[str, bool]) -> None:
         """Update current_page based on the 5 pairs of OPEN/CLOSED switches.
@@ -184,19 +209,19 @@ class App:
         all_closed = all(close and not open_ for open_, close in page_states)
 
         if all_closed:
-            self.current_page = "front_cover"
-            self.logger.debug("All pages closed -> front_cover")
+            self.current_page = "page1"
+            self.logger.debug("All pages closed -> page1")
             return
 
         if all_open:
-            self.current_page = "back_cover"
-            self.logger.debug("All pages open -> back_cover")
+            self.current_page = "page6"
+            self.logger.debug("All pages open -> page6")
             return
 
-        # If page5 is OPEN and not CLOSED, show back_cover
+        # If page5 is OPEN and not CLOSED, show page6
         p5_open, p5_close = page_states[4]
         if p5_open and not p5_close:
-            self.current_page = "back_cover"
+            self.current_page = "page6"
             return
 
         open_pages = [
@@ -223,7 +248,7 @@ class App:
                 if event.type == pg.QUIT:
                     self.running = False
 
-            _ = self.screen.fill((255, 255, 255))
+            _ = self.screen.fill(self.config.get("background_color", (255, 255, 255)))
 
             current_video = self.video_clips.get(self.current_page)
             if current_video:
@@ -259,7 +284,9 @@ class App:
                 error_text = "!"
 
             # check if any errors occured
-            _ = self.error_surface.fill((255, 255, 255))
+            _ = self.error_surface.fill(
+                self.config.get("background_color", (255, 255, 255))
+            )
             if error_text:
                 font = pg.font.SysFont(None, 20)
                 lines = error_text.strip().split("\n")

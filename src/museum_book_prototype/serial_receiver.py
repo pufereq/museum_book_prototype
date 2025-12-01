@@ -122,10 +122,14 @@ class SerialReceiver:
         """Run the serial receiver."""
         self.logger.info("Starting SerialReceiver...")
         self.connect()
+        line = ""
         while True:
             if self.is_connected():
+                old_line = line
                 line = self.read_line()
-                # TODO: parse line
+
+                if old_line != line:
+                    self.logger.info(f"Switches changed: {line}")
 
                 if line:
                     self.parse_callback(line)
