@@ -4,11 +4,33 @@
 from __future__ import annotations
 
 import logging as lg
+import time
+from pathlib import Path
+
 import pygame as pg
 import yaml
-import time
 
-from moviepy import VideoFileClip
+from museum_book_prototype.video_stream import VideoStream
+
+
+VIDEO_SOURCES: dict[str, str] = {
+    "front_cover": "assets/1.mov",
+    "page1": "assets/2.mov",
+    "page2": "assets/3.mov",
+    "page3": "assets/4.mov",
+    "page4": "assets/5.mov",
+    "back_cover": "assets/6.mov",
+}
+
+PAGE_LABELS: dict[str | None, str | None] = {
+    "front_cover": "page1",
+    "page1": "page2",
+    "page2": "page3",
+    "page3": "page4",
+    "page4": "page5",
+    "back_cover": "page6",
+    None: "None",
+}
 
 
 class App:
@@ -18,11 +40,21 @@ class App:
         """Initialize the application."""
         self.logger: lg.Logger = lg.getLogger(f"{__name__}.{self.__class__.__name__}")
         self.logger.debug("Initializing App...")
-        self.video_clips: dict[str, VideoFileClip] = {}
-        self.video_frames: dict[str, list[pg.Surface]] = {}
+        self.videos: dict[str, VideoStream] = {}
         self.video_times: dict[str, float] = {}
 
         self.config = self.get_config()
+        self.inputs: dict[str, bool] = {}
+
+        cache_dir_setting = self.config.get("frame_cache_dir", "assets/frame_cache")
+        self.cache_root: Path = Path(cache_dir_setting)
+        try:
+            self.cache_root.mkdir(parents=True, exist_ok=True)
+        except Exception:  # noqa: BLE001
+            self.logger.exception(
+                "Failed to create cache directory at %s", self.cache_root
+            )
+            raise
 
         _ = pg.init()
         self.screen: pg.Surface = pg.display.set_mode((0, 0), pg.FULLSCREEN)
@@ -37,6 +69,9 @@ class App:
 
         self.clock: pg.time.Clock = pg.time.Clock()
         self.running: bool = True
+
+        self.target_fps: int = self._config_int("target_fps", 24)
+        self.max_video_fps: float = self._config_float("max_video_fps", 24.0)
 
         self.floating_start_time: float | None = None
         self.floating_pages: set[int] | None = None
@@ -68,22 +103,42 @@ class App:
         Args:
             value (str | None): The new current page identifier.
         """
-        if value != self._current_page:
-            map = {
-                "front_cover": "page1",
-                "page1": "page2",
-                "page2": "page3",
-                "page3": "page4",
-                "page4": "page5",
-                "back_cover": "page6",
-                None: "None",
-            }
-            self.logger.info(
-                f"Current page changed from {map.get(self._current_page, self._current_page)} to {map.get(value, value)}"
-            )
-            self._current_page = value
-            if value in self.video_times:
-                self.video_times[value] = 0.0
+        if value == self._current_page:
+            return
+
+        previous = self._current_page
+        if previous and previous in self.videos:
+            self.videos[previous].close()
+
+        new_page = value
+
+        if value and value in self.videos:
+            self.video_times[value] = 0.0
+            try:
+                self.videos[value].reset()
+            except FileNotFoundError:
+                self.logger.exception("Video file for %s could not be opened", value)
+                self.critical_errors["video_load_failure"] = True
+                self.videos[value].close()
+                del self.videos[value]
+                new_page = None
+            except Exception:  # noqa: BLE001
+                self.logger.exception("Failed to start video stream for %s", value)
+                self.critical_errors["video_load_failure"] = True
+                new_page = None
+        elif value is None:
+            new_page = None
+        else:
+            self.logger.warning("No video stream configured for page %s", value)
+
+        previous_label = PAGE_LABELS.get(previous, previous)
+        new_label = PAGE_LABELS.get(new_page, new_page)
+
+        self.logger.info(
+            "Current page changed from %s to %s", previous_label, new_label
+        )
+
+        self._current_page = new_page
 
     def get_config(self) -> dict:
         """Load configuration from YAML file.
@@ -100,34 +155,75 @@ class App:
             self.logger.exception("Configuration file not found.")
             return {}
 
+    def _config_int(self, key: str, default: int) -> int:
+        """Return a positive integer configuration value."""
+
+        raw_value = self.config.get(key, default)
+        try:
+            value = int(raw_value)
+        except (TypeError, ValueError):
+            self.logger.warning("Invalid %s in config; defaulting to %s", key, default)
+            return default
+        if value <= 0:
+            self.logger.warning(
+                "Non-positive %s in config; defaulting to %s", key, default
+            )
+            return default
+        return value
+
+    def _config_float(self, key: str, default: float) -> float:
+        """Return a positive float configuration value."""
+
+        raw_value = self.config.get(key, default)
+        try:
+            value = float(raw_value)
+        except (TypeError, ValueError):
+            self.logger.warning(
+                "Invalid %s in config; defaulting to %.1f", key, default
+            )
+            return default
+        if value <= 0:
+            self.logger.warning(
+                "Non-positive %s in config; defaulting to %.1f", key, default
+            )
+            return default
+        return value
+
     def prepare_videos(self):
         """Prepare video clips."""
         self.logger.debug("Preparing video clips...")
-        try:
-            self.video_clips = {
-                "front_cover": VideoFileClip("assets/1.mov"),
-                "page1": VideoFileClip("assets/2.mov"),
-                "page2": VideoFileClip("assets/3.mov"),
-                "page3": VideoFileClip("assets/4.mov"),
-                "page4": VideoFileClip("assets/5.mov"),
-                "back_cover": VideoFileClip("assets/6.mov"),
-            }
-            self.video_frames = {key: [] for key in self.video_clips.keys()}
 
-            # preload frames
-            self.logger.info("Preloading video frames into memory...")
-            for key, clip in self.video_clips.items():
-                self.logger.info(f"Preloading frames for {key}...")
-                for t in [i / clip.fps for i in range(int(clip.duration * clip.fps))]:
-                    frame = clip.get_frame(t)
-                    frame_surface = pg.surfarray.make_surface(frame.swapaxes(0, 1))
-                    self.video_frames[key].append(frame_surface)
+        self.videos.clear()
+        self.video_times.clear()
 
-        except FileNotFoundError:
-            self.logger.exception("Failed to load video clips.")
+        target_size = self.screen.get_size()
+        missing_any = False
+
+        for key, path in VIDEO_SOURCES.items():
+            video_path = Path(path)
+            if not video_path.is_file():
+                self.logger.error("Video file for %s not found at %s", key, video_path)
+                missing_any = True
+                continue
+
+            self.videos[key] = VideoStream(
+                path=str(video_path),
+                fps_limit=self.max_video_fps,
+                target_size=target_size,
+                cache_root=self.cache_root,
+                logger=self.logger.getChild(f"VideoStream[{key}]"),
+            )
+            self.video_times[key] = 0.0
+            self.logger.debug("Prepared lazy stream for %s from %s", key, video_path)
+
+        if missing_any:
             self.critical_errors["video_load_failure"] = True
-            self.video_clips = {}
-        self.video_times = {key: 0.0 for key in self.video_clips}
+
+    def _close_videos(self) -> None:
+        """Release all video stream resources."""
+
+        for stream in self.videos.values():
+            stream.close()
 
     def _check_invalid_state(self, page_states: list[tuple[bool, bool]]) -> None:
         """Check for any page with both OPEN and CLOSED and report it.
@@ -163,6 +259,14 @@ class App:
                     )
 
     def handle_input(self, inputs: dict[str, bool]) -> None:
+        """Public method to handle input updates.
+
+        Args:
+            inputs (dict[str, bool]): Dictionary of switch states.
+        """
+        self.inputs = inputs
+
+    def _handle_input(self, inputs: dict[str, bool]) -> None:
         """Update current_page based on the 5 pairs of OPEN/CLOSED switches.
         If any page is floating for more than 30 seconds the condition is logged once
         for that specific set of pages; no exceptions are raised.
@@ -261,9 +365,13 @@ class App:
     def run(self) -> None:
         """Run the main application loop."""
         self.logger.debug("Starting main application loop...")
+        for key in self.videos:
+            self.videos[key].ensure_cache()
 
         while self.running:
-            dt = self.clock.get_time() / 1000.0
+            dt = self.clock.tick(self.target_fps) / 1000.0
+
+            self._handle_input(self.inputs)
 
             for event in pg.event.get():
                 if event.type == pg.QUIT:
@@ -271,20 +379,14 @@ class App:
 
             _ = self.screen.fill(self.config.get("background_color", (255, 255, 255)))
 
-            current_video = self.video_clips.get(self.current_page)
-            if current_video:
-                # advance video time
-                self.video_times[self.current_page] += dt
-                t = min(
-                    self.video_times[self.current_page], current_video.duration - 0.001
-                )
-
-                frame = current_video.get_frame(t)
-                frame_surface = pg.surfarray.make_surface(frame.swapaxes(0, 1))
-                _ = self.screen.blit(
-                    pg.transform.smoothscale(frame_surface, self.screen.get_size()),
-                    (0, 0),
-                )
+            current_page = self.current_page
+            stream = self.videos.get(current_page) if current_page else None
+            if stream:
+                frame_surface = stream.advance(dt)
+                if frame_surface is not None:
+                    _ = self.screen.blit(frame_surface, (0, 0))
+                    if current_page in self.video_times:
+                        self.video_times[current_page] = stream.elapsed_time
 
             error_text: str = ""
 
@@ -316,7 +418,7 @@ class App:
             _ = self.screen.blit(self.error_surface, (20, 20))
 
             pg.display.flip()
-            _ = self.clock.tick(24)
 
         self.logger.debug("Exiting...")
+        self._close_videos()
         pg.quit()
