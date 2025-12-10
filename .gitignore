@@ -10,8 +10,7 @@ wheels/
 .venv
 
 # assets
-assets/*.mov
-assets/*.mp4
+assets/*
 
 # logs
 logs/*.log*
