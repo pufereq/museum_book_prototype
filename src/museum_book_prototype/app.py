@@ -19,6 +19,7 @@ class App:
         self.logger: lg.Logger = lg.getLogger(f"{__name__}.{self.__class__.__name__}")
         self.logger.debug("Initializing App...")
         self.video_clips: dict[str, VideoFileClip] = {}
+        self.video_frames: dict[str, list[pg.Surface]] = {}
         self.video_times: dict[str, float] = {}
 
         self.config = self.get_config()
@@ -111,6 +112,17 @@ class App:
                 "page4": VideoFileClip("assets/5.mov"),
                 "back_cover": VideoFileClip("assets/6.mov"),
             }
+            self.video_frames = {key: [] for key in self.video_clips.keys()}
+
+            # preload frames
+            self.logger.info("Preloading video frames into memory...")
+            for key, clip in self.video_clips.items():
+                self.logger.info(f"Preloading frames for {key}...")
+                for t in [i / clip.fps for i in range(int(clip.duration * clip.fps))]:
+                    frame = clip.get_frame(t)
+                    frame_surface = pg.surfarray.make_surface(frame.swapaxes(0, 1))
+                    self.video_frames[key].append(frame_surface)
+
         except FileNotFoundError:
             self.logger.exception("Failed to load video clips.")
             self.critical_errors["video_load_failure"] = True
