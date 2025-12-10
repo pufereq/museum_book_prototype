@@ -4,6 +4,10 @@ bool page3Open, page3Close;
 bool page4Open, page4Close;
 bool page5Open, page5Close;
 
+unsigned long lastToggle = 0;
+const unsigned long TOGGLE_INTERVAL = 5000; // 5 sekund
+bool flipFirst = false;
+
 void setup() {
   Serial.begin(9600);
 
@@ -15,7 +19,7 @@ void setup() {
 
   pinMode(34, INPUT_PULLUP);  // page3Open
   pinMode(35, INPUT_PULLUP);  // page3Close
-  
+
   pinMode(36, INPUT_PULLUP);  // page4Open
   pinMode(37, INPUT_PULLUP);  // page4Close
 
@@ -50,8 +54,19 @@ String CSV() {
   return csv;
 }
 
+String CSVDebug() {
+  String firstPair = flipFirst ? "1,0" : "0,1";
+  String rest = ",0,1,0,1,0,1,0,1"; // strony 2..5 jako (0,1)
+  return firstPair + rest;
+}
+
 void loop() {
+  if (millis() - lastToggle >= TOGGLE_INTERVAL) {
+    flipFirst = !flipFirst;
+    lastToggle = millis();
+  }
   getPageStatus();
   Serial.println(CSV());
+  // Serial.println(CSVDebug());
   delay(250);
 }
