@@ -56,7 +56,7 @@ String CSV() {
 
 String CSVDebug() {
   String firstPair = flipFirst ? "1,0" : "0,1";
-  String rest = ",0,1,0,1,0,1,0,1"; // strony 2..5 jako (0,1)
+  String rest = ",0,1,0,1,0,1,0,1";
   return firstPair + rest;
 }
 
@@ -65,6 +65,7 @@ void loop() {
     flipFirst = !flipFirst;
     lastToggle = millis();
   }
+
   getPageStatus();
   Serial.println(CSV());
   // Serial.println(CSVDebug());
