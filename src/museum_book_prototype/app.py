@@ -6,6 +6,7 @@ from __future__ import annotations
 import logging as lg
 import time
 from pathlib import Path
+from typing import Any
 
 import pygame as pg
 import yaml
@@ -43,7 +44,7 @@ class App:
         self.videos: dict[str, VideoStream] = {}
         self.video_times: dict[str, float] = {}
 
-        self.config = self.get_config()
+        self.config: dict[str, Any] = self.get_config()
         self.inputs: dict[str, bool] = {}
 
         cache_dir_setting = self.config.get("frame_cache_dir", "assets/frame_cache")
@@ -64,6 +65,28 @@ class App:
         _ = self.error_surface.fill((255, 255, 255))
         self.error_surface.set_colorkey((255, 255, 255))
         self.error_surface.set_alpha(200)
+
+        self.background_surface: pg.Surface = pg.Surface(self.screen.get_size())
+
+        # set background from assets/background.jpg
+        bg_path = Path("assets/background.jpg")
+        if bg_path.is_file():
+            bg_image = pg.image.load(str(bg_path)).convert()
+
+            scaled_size = self._scale_aspect_fit(
+                bg_image.get_size(), self.screen.get_size()
+            )
+            bg_image = pg.transform.smoothscale(bg_image, scaled_size)
+
+            # center
+            x = (self.screen.get_width() - scaled_size[0]) // 2
+            y = (self.screen.get_height() - scaled_size[1]) // 2
+            _ = self.background_surface.fill((0, 0, 0))
+            _ = self.background_surface.blit(bg_image, (x, y))
+        else:
+            _ = self.background_surface.fill(
+                self.config.get("background_color", (255, 255, 255))
+            )
 
         self._current_page: str | None = None
 
@@ -139,6 +162,33 @@ class App:
         )
 
         self._current_page = new_page
+
+    def _scale_aspect_fit(
+        self, source_size: tuple[int, int], target_size: tuple[int, int]
+    ) -> tuple[int, int]:
+        """Scale source size to fit within target size while preserving aspect ratio.
+
+        Args:
+            source_size (tuple[int, int]): Original size (width, height).
+            target_size (tuple[int, int]): Target size (width, height).
+
+        Returns:
+            tuple[int, int]: Scaled size (width, height).
+        """
+        source_width, source_height = source_size
+        target_width, target_height = target_size
+
+        source_aspect = source_width / source_height
+        target_aspect = target_width / target_height
+
+        if source_aspect > target_aspect:
+            scaled_width = target_width
+            scaled_height = int(target_width / source_aspect)
+        else:
+            scaled_height = target_height
+            scaled_width = int(target_height * source_aspect)
+
+        return scaled_width, scaled_height
 
     def get_config(self) -> dict:
         """Load configuration from YAML file.
@@ -377,7 +427,8 @@ class App:
                 if event.type == pg.QUIT:
                     self.running = False
 
-            _ = self.screen.fill(self.config.get("background_color", (255, 255, 255)))
+            # _ = self.screen.fill(self.config.get("background_color", (255, 255, 255)))
+            _ = self.screen.blit(self.background_surface, (0, 0))
 
             current_page = self.current_page
             stream = self.videos.get(current_page) if current_page else None
